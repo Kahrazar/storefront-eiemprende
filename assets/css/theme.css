@@ -1,0 +1,24 @@
+:root {
+    --primary-color: #0073aa;
+    --secondary-color: #111111;
+    --accent-color: #00ff00;
+}
+
+body {
+    font-family: Arial, sans-serif;
+}
+
+button,
+.button,
+input[type="submit"] {
+    background: var(--primary-color);
+    border-radius: 8px;
+}
+
+.site-header {
+    background: var(--secondary-color);
+}
+
+a {
+    color: var(--accent-color);
+}
