@@ -1,71 +1,94 @@
 <?php
-/**
- * Storefront engine room
- *
- * @package storefront
- */
 
-/**
- * Assign the Storefront version to a var
- */
-$theme              = wp_get_theme( 'storefront' );
-$storefront_version = $theme['Version'];
+add_action('wp_enqueue_scripts', function () {
 
-/**
- * Set the content width based on the theme's design and stylesheet.
- */
-if ( ! isset( $content_width ) ) {
-	$content_width = 980; /* pixels */
+    wp_enqueue_style(
+        'storefront-child',
+        get_stylesheet_directory_uri() . '/assets/css/theme.css',
+        ['storefront-style'],
+        wp_get_theme()->get('Version')
+    );
+
+});
+
+add_action('after_setup_theme', function () {
+
+    remove_action('storefront_sidebar', 'storefront_get_sidebar', 10);
+    remove_action('storefront_header', 'storefront_product_search', 40);
+
+}, 11);
+
+add_action('woocommerce_before_shop_loop', function () {
+
+    if (function_exists('storefront_product_search') && (is_shop() || is_product_category() || is_product_tag())) {
+        storefront_product_search();
+    }
+
+}, 5);
+
+function storefront_child_get_about_page_id() {
+
+    $about_page = get_page_by_path('about-us');
+
+    if ($about_page) {
+        return $about_page->ID;
+    }
+
+    return wp_insert_post([
+        'post_title' => 'About Us',
+        'post_name' => 'about-us',
+        'post_content' => '<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer vitae justo vitae neque tincidunt posuere. Praesent sed sem at lorem luctus feugiat. Donec facilisis, risus at dignissim luctus, nibh erat luctus risus, vitae volutpat mi mi at arcu.</p>',
+        'post_status' => 'publish',
+        'post_type' => 'page',
+    ]);
+
 }
 
-$storefront = (object) array(
-	'version'    => $storefront_version,
+add_action('init', function () {
 
-	/**
-	 * Initialize all the things.
-	 */
-	'main'       => require 'inc/class-storefront.php',
-	'customizer' => require 'inc/customizer/class-storefront-customizer.php',
-);
+    storefront_child_get_about_page_id();
 
-require 'inc/storefront-functions.php';
-require 'inc/storefront-template-hooks.php';
-require 'inc/storefront-template-functions.php';
-require 'inc/wordpress-shims.php';
+});
 
-if ( class_exists( 'Jetpack' ) ) {
-	$storefront->jetpack = require 'inc/jetpack/class-storefront-jetpack.php';
-}
+add_filter('wp_nav_menu_items', function ($items, $args) {
 
-if ( storefront_is_woocommerce_activated() ) {
-	$storefront->woocommerce            = require 'inc/woocommerce/class-storefront-woocommerce.php';
-	$storefront->woocommerce_customizer = require 'inc/woocommerce/class-storefront-woocommerce-customizer.php';
+    if (!isset($args->theme_location) || 'primary' !== $args->theme_location) {
+        return $items;
+    }
 
-	require 'inc/woocommerce/class-storefront-woocommerce-adjacent-products.php';
+    $about_page_id = storefront_child_get_about_page_id();
 
-	require 'inc/woocommerce/storefront-woocommerce-template-hooks.php';
-	require 'inc/woocommerce/storefront-woocommerce-template-functions.php';
-	require 'inc/woocommerce/storefront-woocommerce-functions.php';
-}
+    if (is_wp_error($about_page_id) || !$about_page_id) {
+        return $items;
+    }
 
-if ( is_admin() ) {
-	$storefront->admin = require 'inc/admin/class-storefront-admin.php';
+    $about_url = esc_url(get_permalink($about_page_id));
 
-	require 'inc/admin/class-storefront-plugin-install.php';
-}
+    return $items . '<li class="menu-item menu-item-about-us"><a href="' . $about_url . '">About Us</a></li>';
 
-/**
- * NUX
- * Only load if wp version is 4.7.3 or above because of this issue;
- * https://core.trac.wordpress.org/ticket/39610?cversion=1&cnum_hist=2
- */
-if ( version_compare( get_bloginfo( 'version' ), '4.7.3', '>=' ) && ( is_admin() || is_customize_preview() ) ) {
-	require 'inc/nux/class-storefront-nux-admin.php';
-	require 'inc/nux/class-storefront-nux-guided-tour.php';
-	require 'inc/nux/class-storefront-nux-starter-content.php';
-}
+}, 10, 2);
 
-/**
- * Note: Do not add any custom code here. Please use a custom plugin so that your customizations aren't lost during updates.
- * https://github.com/woocommerce/theme-customisations
- */
+add_filter('body_class', function ($classes) {
+
+    $classes[] = 'storefront-full-width-content';
+
+    return $classes;
+
+});
+
+add_action('wp_head', function () {
+
+    $primary = get_option('my_primary_color', '#0073aa');
+    $secondary = get_option('my_secondary_color', '#111111');
+    $accent = get_option('my_accent_color', '#00ff00');
+
+    echo "
+    <style>
+        :root {
+            --primary-color: {$primary};
+            --secondary-color: {$secondary};
+            --accent-color: {$accent};
+        }
+    </style>
+    ";
+});
